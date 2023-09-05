@@ -45,7 +45,7 @@
     <div class="board" id="board"></div>
     <p id="status"></p>
     <label for="ai-toggle">AI Opponent:</label>
-    <input type="checkbox" id="ai-toggle" checked>
+    <input type="checkbox" id="ai-toggle">
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
@@ -57,7 +57,8 @@
             let currentPlayer = "X";
             let gameBoard = ["", "", "", "", "", "", "", "", ""]; // Represents the game board
             let gameOver = false;
-            let aiEnabled = true;
+            let aiEnabled = false; // Start with AI disabled
+            let aiPlayer = "O"; // AI is always "O"
 
             // Function to handle a player's move
             function makeMove(cellIndex) {
@@ -69,10 +70,10 @@
                     updateStatus();
 
                     // Check for a winner after the player's move
-                    if (!gameOver && currentPlayer === "O" && aiEnabled) {
+                    if (!gameOver && currentPlayer === aiPlayer && aiEnabled) {
                         // AI's turn (minimax algorithm with depth limiting)
                         setTimeout(() => {
-                            const bestMove = getBestMove(gameBoard, "O");
+                            const bestMove = getBestMove(gameBoard, aiPlayer);
                             makeMove(bestMove);
                         }, 500); // Add a delay to simulate AI's thinking
                     }
@@ -126,6 +127,13 @@
                 updateStatus();
                 status.textContent = "";
                 gameOver = false;
+                if (currentPlayer === aiPlayer && aiEnabled) {
+                    // AI's turn (minimax algorithm with depth limiting)
+                    setTimeout(() => {
+                        const bestMove = getBestMove(gameBoard, aiPlayer);
+                        makeMove(bestMove);
+                    }, 500); // Add a delay to simulate AI's thinking
+                }
             }
 
             // Create the game board cells
@@ -142,13 +150,7 @@
             // Toggle AI event
             aiToggle.addEventListener("change", function () {
                 aiEnabled = this.checked;
-                if (currentPlayer === "O" && aiEnabled) {
-                    // AI's turn (minimax algorithm with depth limiting)
-                    setTimeout(() => {
-                        const bestMove = getBestMove(gameBoard, "O");
-                        makeMove(bestMove);
-                    }, 500); // Add a delay to simulate AI's thinking
-                }
+                resetGame(); // Reset the game when AI is toggled
             });
 
             updateStatus();
@@ -156,12 +158,71 @@
 
         // Function to get the best move using minimax algorithm with depth limiting
         function getBestMove(board, player) {
-            // ... (same as before)
+            const emptyCells = board.reduce((acc, val, index) => {
+                if (val === "") {
+                    acc.push(index);
+                }
+                return acc;
+            }, []);
+
+            let bestMove;
+            let bestScore = player === "O" ? -Infinity : Infinity;
+
+            for (let i = 0; i < emptyCells.length; i++) {
+                const move = emptyCells[i];
+                board[move] = player;
+
+                const score = minimax(board, 0, false, player === "O" ? "X" : "O");
+
+                board[move] = "";
+
+                if ((player === "O" && score > bestScore) || (player === "X" && score < bestScore)) {
+                    bestScore = score;
+                    bestMove = move;
+                }
+            }
+
+            return bestMove;
         }
 
         // Function to perform minimax with depth limiting and heuristic evaluation
         function minimax(board, depth, isMaximizing, player) {
-            // ... (same as before)
+            const scores = {
+                X: -1,
+                O: 1,
+                tie: 0,
+            };
+
+            const result = checkWinner();
+            if (result) {
+                return scores[result];
+            }
+
+            if (isMaximizing) {
+                let bestScore = -Infinity;
+                for (let i = 0; i < board.length; i++) {
+                    if (board[i] === "") {
+                        board[i] = player;
+                        const score = minimax(board, depth + 1, false, player === "O" ? "X" : "O");
+                        board[i] = "";
+                        bestScore = Math.max(score, bestScore);
+                    }
+                }
+                return bestScore;
+            } else {
+                let bestScore = Infinity;
+                for (let i = 0; i < board.length; i++) {
+                    if (board[i] === "") {
+                        board[i] = player;
+                        const score = minimax(board, depth + 1, true, player === "O" ? "X" : "O");
+                        board[i] = "";
+                        bestScore = Math.min(score, bestScore);
+                    }
+                }
+                return bestScore;
+            }
+
+            return 0; // Default case
         }
     </script>
 </body>
